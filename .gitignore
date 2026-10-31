@@ -1,0 +1,8 @@
+.env
+!.env.example
+__pycache__/
+.venv/
+*.pyc
+.pytest_cache/
+.maestri/
+backend/replay_raw.json

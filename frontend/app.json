@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "vocal-finance",
+    "slug": "vocal-finance",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "vocalfinance",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": "./assets/expo.icon"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Permita o acesso ao microfone para registrar por voz"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "86273fa8-8a3a-44e6-baaa-c12430b44e6d"
+      }
+    },
+    "owner": "harielgaelins-team"
+  }
+}
