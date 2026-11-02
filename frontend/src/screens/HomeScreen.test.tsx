@@ -24,6 +24,7 @@ jest.mock("../services/recordService", () => ({
   sendVoiceRecord: jest.fn(),
 }));
 
+const prepareMock = jest.fn();
 const startMock = jest.fn();
 const stopMock = jest.fn();
 const mockedUseVoiceRecorder = useVoiceRecorder as jest.Mock;
@@ -49,9 +50,11 @@ const savedRecord: FinancialRecord = {
 describe("HomeScreen voice flow", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    prepareMock.mockReset().mockResolvedValue(true);
     startMock.mockReset().mockResolvedValue(true);
     stopMock.mockReset().mockResolvedValue({ uri: "blob:audio", durationMs: 3000 });
     mockedUseVoiceRecorder.mockReturnValue({
+      prepare: prepareMock,
       start: startMock,
       stop: stopMock,
       durationMs: 0,
@@ -169,6 +172,39 @@ describe("HomeScreen voice flow", () => {
 
     expect(stopMock).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Segure o botão enquanto fala")).toBeTruthy();
+  });
+
+  it("prepares the recorder again after a recording is sent", async () => {
+    mockedSendVoiceRecord.mockResolvedValue(savedRecord);
+    await render(<HomeScreen />);
+    const button = screen.getByLabelText("Segure para gravar");
+
+    await fireEvent(button, "pressIn");
+    expect(prepareMock).not.toHaveBeenCalled();
+
+    await fireEvent(button, "pressOut");
+
+    expect(prepareMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("prepares the recorder again after a release that came before the start finished", async () => {
+    let resolveStart: ((value: boolean) => void) | undefined;
+    startMock.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveStart = resolve;
+        }),
+    );
+    await render(<HomeScreen />);
+    const button = screen.getByLabelText("Segure para gravar");
+
+    await fireEvent(button, "pressIn");
+    await fireEvent(button, "pressOut");
+    await act(async () => {
+      resolveStart?.(true);
+    });
+
+    expect(prepareMock).toHaveBeenCalledTimes(1);
   });
 
   it("shows the hold message on a synthetic click without press events", async () => {

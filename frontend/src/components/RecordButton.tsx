@@ -1,6 +1,14 @@
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+  type ViewStyle,
+} from "react-native";
 import { colors } from "../constants/colors";
 
 export type RecordButtonState = "idle" | "recording" | "processing" | "success";
@@ -12,6 +20,16 @@ type RecordButtonProps = {
   onPressOut: () => void;
 };
 
+const touchHitSlop = { top: 24, bottom: 24, left: 24, right: 24 };
+const pressRetentionOffset = { top: 80, bottom: 80, left: 80, right: 80 };
+const webTouchStyle = (
+  Platform.OS === "web"
+    ? { touchAction: "none", WebkitTouchCallout: "none", WebkitTapHighlightColor: "transparent" }
+    : null
+) as ViewStyle | null;
+
+function preventLongPressMenu() {}
+
 export default function RecordButton({
   state,
   onPress,
@@ -19,7 +37,8 @@ export default function RecordButton({
   onPressOut,
 }: RecordButtonProps) {
   const [pulse] = useState(() => new Animated.Value(1));
-  const isRecording = state === "recording";
+  const [isPressed, setIsPressed] = useState(false);
+  const isRecording = state === "recording" || (isPressed && state === "idle");
   const isProcessing = state === "processing";
 
   useEffect(() => {
@@ -40,6 +59,16 @@ export default function RecordButton({
     return () => animation.stop();
   }, [isRecording, pulse]);
 
+  const handlePressIn = () => {
+    setIsPressed(true);
+    onPressIn();
+  };
+
+  const handlePressOut = () => {
+    setIsPressed(false);
+    onPressOut();
+  };
+
   return (
     <View style={styles.container}>
       {isRecording ? (
@@ -48,12 +77,16 @@ export default function RecordButton({
       <Pressable
         style={[
           styles.button,
+          webTouchStyle,
           isRecording && styles.recordingButton,
           state === "success" && styles.successButton,
         ]}
         onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        onLongPress={preventLongPressMenu}
+        hitSlop={touchHitSlop}
+        pressRetentionOffset={pressRetentionOffset}
         disabled={isProcessing}
         accessibilityRole="button"
         accessibilityLabel="Segure para gravar"
@@ -95,6 +128,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.accent,
     backgroundColor: colors.card,
+    userSelect: "none",
   },
   recordingButton: {
     borderColor: colors.danger,

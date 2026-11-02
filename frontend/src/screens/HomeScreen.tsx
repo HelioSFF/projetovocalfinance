@@ -74,7 +74,7 @@ export default function HomeScreen() {
   const isStartingRef = useRef(false);
   const isRecordingRef = useRef(false);
   const isFinishingRef = useRef(false);
-  const { start, stop, durationMs } = useVoiceRecorder();
+  const { prepare, start, stop, durationMs } = useVoiceRecorder();
 
   const loadLastRecord = useCallback(async () => {
     setIsLoadingLastRecord(true);
@@ -90,6 +90,10 @@ export default function HomeScreen() {
       setIsLoadingLastRecord(false);
     }
   }, []);
+
+  const warmUpRecorder = useCallback(() => {
+    prepare().catch(() => undefined);
+  }, [prepare]);
 
   const finishRecording = useCallback(async () => {
     if (isFinishingRef.current) {
@@ -135,8 +139,9 @@ export default function HomeScreen() {
       }
     } finally {
       isFinishingRef.current = false;
+      warmUpRecorder();
     }
-  }, [stop]);
+  }, [stop, warmUpRecorder]);
 
   const startRecording = async () => {
     if (isStartingRef.current || isRecordingRef.current || status === "processing") {
@@ -164,6 +169,7 @@ export default function HomeScreen() {
         isRecordingRef.current = false;
         setStatus("error");
         setFeedback("Segure o botão enquanto fala");
+        warmUpRecorder();
         return;
       }
 
@@ -206,7 +212,8 @@ export default function HomeScreen() {
   useFocusEffect(
     useCallback(() => {
       loadLastRecord();
-    }, [loadLastRecord]),
+      warmUpRecorder();
+    }, [loadLastRecord, warmUpRecorder]),
   );
 
   useEffect(() => {

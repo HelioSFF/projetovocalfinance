@@ -5,7 +5,7 @@ import {
   useAudioRecorder,
   useAudioRecorderState,
 } from "expo-audio";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 const recordingOptions = {
   ...RecordingPresets.HIGH_QUALITY,
@@ -25,24 +25,59 @@ export type VoiceRecording = {
 export function useVoiceRecorder() {
   const recorder = useAudioRecorder(recordingOptions);
   const recorderState = useAudioRecorderState(recorder, 200);
+  const preparationRef = useRef<Promise<boolean> | null>(null);
+
+  const prepare = useCallback((): Promise<boolean> => {
+    if (preparationRef.current) {
+      return preparationRef.current;
+    }
+
+    const preparation = (async () => {
+      const permission = await AudioModule.requestRecordingPermissionsAsync();
+
+      if (!permission.granted) {
+        return false;
+      }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      await recorder.prepareToRecordAsync();
+
+      return true;
+    })();
+
+    preparationRef.current = preparation;
+
+    preparation
+      .then((prepared) => {
+        if (!prepared && preparationRef.current === preparation) {
+          preparationRef.current = null;
+        }
+      })
+      .catch(() => {
+        if (preparationRef.current === preparation) {
+          preparationRef.current = null;
+        }
+      });
+
+    return preparation;
+  }, [recorder]);
 
   const start = useCallback(async () => {
-    const permission = await AudioModule.requestRecordingPermissionsAsync();
+    const prepared = await prepare();
 
-    if (!permission.granted) {
+    if (!prepared) {
       return false;
     }
 
-    await setAudioModeAsync({
-      allowsRecording: true,
-      playsInSilentMode: true,
-    });
-
-    await recorder.prepareToRecordAsync();
+    preparationRef.current = null;
     recorder.record();
 
     return true;
-  }, [recorder]);
+  }, [prepare, recorder]);
 
   const stop = useCallback(async (): Promise<VoiceRecording | null> => {
     const durationMs = recorder.getStatus().durationMillis;
@@ -57,6 +92,7 @@ export function useVoiceRecorder() {
   }, [recorder]);
 
   return {
+    prepare,
     start,
     stop,
     durationMs: recorderState.durationMillis,
