@@ -1,0 +1,56 @@
+services:
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vocal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vocal}
+      POSTGRES_DB: ${POSTGRES_DB:-vocal_finance}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vocal} -d ${POSTGRES_DB:-vocal_finance}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    env_file:
+      - path: ./backend/.env
+        required: false
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vocal}:${POSTGRES_PASSWORD:-vocal}@db:5432/${POSTGRES_DB:-vocal_finance}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    environment:
+      EXPO_PUBLIC_API_URL: ${EXPO_PUBLIC_API_URL:-http://localhost:8000}
+      EXPO_PUBLIC_APP_ENV: ${EXPO_PUBLIC_APP_ENV:-production}
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+  checks:
+    profiles:
+      - checks
+    build: ./frontend
+    command: sh -c "npx expo lint && npx tsc --noEmit && npm test"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+
+volumes:
+  postgres_data:
+  frontend_node_modules:
